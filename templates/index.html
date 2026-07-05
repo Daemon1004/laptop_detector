@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детекция ноутбуков в аудитории</title>
+    <style>
+        :root {
+            --brand: #4f46e5;
+            --brand-dark: #4338ca;
+            --brand-soft: #eef2ff;
+            --green: #16a34a;
+            --green-dark: #15803d;
+            --red: #dc2626;
+            --ink: #1e2233;
+            --muted: #6b7280;
+            --line: #e5e7eb;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+            --radius: 14px;
+            --shadow: 0 6px 24px rgba(17, 24, 39, .08);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.5;
+            padding: 28px 16px;
+        }
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            background: var(--card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: #fff;
+            padding: 34px 32px;
+        }
+        header h1 { font-size: 25px; font-weight: 700; letter-spacing: -.2px; }
+        header p { opacity: .9; font-size: 14px; margin-top: 6px; }
+        .content { padding: 28px 32px 36px; }
+
+        /* Upload */
+        .upload-section {
+            border: 2px dashed #c7cbe6;
+            background: linear-gradient(180deg, #fafbff, #f5f6ff);
+            border-radius: var(--radius);
+            padding: 30px;
+            text-align: center;
+            transition: border-color .2s, background .2s;
+        }
+        .upload-section:hover { border-color: var(--brand); }
+        .upload-section h2 { font-size: 17px; margin-bottom: 16px; font-weight: 600; }
+        input[type="file"] { display: none; }
+        .btn {
+            display: inline-block; border: none; cursor: pointer;
+            font-size: 15px; font-weight: 600; padding: 11px 26px;
+            border-radius: 10px; transition: transform .05s, box-shadow .2s, background .2s;
+            color: #fff; text-decoration: none;
+        }
+        .btn:active { transform: translateY(1px); }
+        .file-label { background: var(--brand); }
+        .file-label:hover { background: var(--brand-dark); }
+        .file-name { margin: 14px 0; font-size: 13px; color: var(--muted); min-height: 18px; }
+        .process-btn { background: var(--green); }
+        .process-btn:hover { background: var(--green-dark); }
+        .process-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* Loading */
+        .loading { display: none; text-align: center; padding: 26px; color: var(--muted); }
+        .spinner {
+            width: 42px; height: 42px; margin: 0 auto 12px;
+            border: 4px solid #e5e7eb; border-top-color: var(--brand);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Error */
+        .error {
+            display: none; background: #fef2f2; color: #b91c1c;
+            border: 1px solid #fecaca; border-radius: 10px;
+            padding: 13px 16px; margin-top: 20px; font-size: 14px;
+        }
+        .error.active { display: block; }
+
+        /* Results */
+        .results-section { display: none; margin-top: 30px; }
+        .results-section.active { display: block; }
+        .section-title { font-size: 18px; font-weight: 700; margin: 26px 0 14px; }
+        .image-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+        @media (max-width: 640px) { .image-grid { grid-template-columns: 1fr; } }
+        .image-card {
+            background: #fff; border: 1px solid var(--line);
+            border-radius: var(--radius); overflow: hidden;
+        }
+        .image-card h3 {
+            font-size: 12px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: .5px; color: var(--muted);
+            padding: 12px 14px; border-bottom: 1px solid var(--line); background: #fafafa;
+        }
+        .image-card img { display: block; width: 100%; max-height: 360px; object-fit: contain; background: #f8fafc; }
+
+        /* Stats */
+        .stats { display: flex; gap: 16px; margin-top: 22px; flex-wrap: wrap; }
+        .stat {
+            flex: 1; min-width: 200px;
+            background: var(--brand-soft); border: 1px solid #e0e3ff;
+            border-radius: var(--radius); padding: 18px 20px;
+        }
+        .stat .label { font-size: 13px; color: var(--muted); }
+        .stat .value { font-size: 30px; font-weight: 700; color: var(--brand); margin-top: 2px; }
+        .stat .value small { font-size: 15px; font-weight: 600; color: var(--muted); }
+        .stat.green { background: #ecfdf5; border-color: #bbf7d0; }
+        .stat.green .value { color: var(--green); }
+
+        /* Detections */
+        .detections-list { margin-top: 12px; max-height: 300px; overflow-y: auto; display: grid; gap: 8px; }
+        .detection-item {
+            background: #f9fafb; border: 1px solid var(--line);
+            border-left: 4px solid var(--brand); border-radius: 8px;
+            padding: 10px 14px; font-size: 13px; color: #374151;
+        }
+        .detection-item strong { color: var(--ink); }
+
+        /* History */
+        .history-section { margin-top: 34px; padding-top: 26px; border-top: 1px solid var(--line); }
+        .history-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .history-btn { background: var(--brand); }
+        .history-btn:hover { background: var(--brand-dark); }
+        .clear-btn { background: var(--red); }
+        .clear-btn:hover { background: #b91c1c; }
+        .history-list { margin-top: 18px; display: grid; gap: 10px; max-height: 380px; overflow-y: auto; }
+        .history-item {
+            background: #f9fafb; border: 1px solid var(--line);
+            border-left: 4px solid var(--brand); border-radius: 8px; padding: 12px 15px;
+        }
+        .history-time { font-size: 12px; color: var(--muted); }
+        .history-count { font-weight: 600; color: var(--brand); margin-top: 3px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Детекция ноутбуков в аудитории</h1>
+            <p>Автоматическое определение и подсчёт ноутбуков на изображении с помощью YOLOv8</p>
+        </header>
+
+        <div class="content">
+            <div class="error" id="errorBox"></div>
+
+            <div class="upload-section">
+                <h2>Загрузить изображение</h2>
+                <label class="btn file-label" for="imageInput">Выбрать файл</label>
+                <input type="file" id="imageInput" accept="image/*">
+                <div class="file-name" id="fileName"></div>
+                <button class="btn process-btn" id="processBtn" disabled>Запустить обработку</button>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Обработка изображения…</p>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h2 class="section-title">Результаты анализа</h2>
+
+                <div class="image-grid">
+                    <div class="image-card">
+                        <h3>Исходное изображение</h3>
+                        <img id="originalImage" src="" alt="Исходное изображение">
+                    </div>
+                    <div class="image-card">
+                        <h3>Результат детекции</h3>
+                        <img id="resultImage" src="" alt="Результат">
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat green">
+                        <div class="label">Обнаружено ноутбуков</div>
+                        <div class="value" id="laptopCount">0</div>
+                    </div>
+                    <div class="stat">
+                        <div class="label">Время обработки</div>
+                        <div class="value"><span id="processTime">0</span> <small>мс</small></div>
+                    </div>
+                </div>
+
+                <div id="detectionsContainer">
+                    <h3 class="section-title">Детали детекций</h3>
+                    <div class="detections-list" id="detectionsList"></div>
+                </div>
+            </div>
+
+            <div class="history-section">
+                <h2 class="section-title">История обработок</h2>
+                <div class="history-actions">
+                    <button class="btn history-btn" id="showHistoryBtn">Показать историю</button>
+                    <button class="btn clear-btn" id="clearHistoryBtn">Очистить историю</button>
+                    <a class="btn history-btn" id="exportBtn" href="/export">Выгрузить в Excel</a>
+                </div>
+                <div class="history-list" id="historyList" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
